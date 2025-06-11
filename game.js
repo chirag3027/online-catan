@@ -356,3 +356,226 @@ class CatanGame {
             this.addChatMessage(`No hexes produce resources for ${number}`, 'system');
             return;
         }
+
+        // For simulation, give resources to players based on producing hexes
+        let totalDistributed = 0;
+        producingHexes.forEach(({ hex }) => {
+            // Simulate each player having a chance to get resources from this hex
+            this.players.forEach(player => {
+                // 30% chance this player has a settlement on this hex (for simulation)
+                if (Math.random() < 0.3) {
+                    const resourceMap = {
+                        'grain': 'grain',
+                        'wood': 'wood', 
+                        'brick': 'brick',
+                        'ore': 'ore',
+                        'sheep': 'sheep'
+                    };
+                    
+                    const resource = resourceMap[hex.resource];
+                    if (resource) {
+                        player.resources[resource]++;
+                        totalDistributed++;
+                        this.addChatMessage(`${player.name} received 1 ${resource}`, 'system');
+                    }
+                }
+            });
+        });
+        
+        if (totalDistributed === 0) {
+            this.addChatMessage(`No players collected resources from ${number}`, 'system');
+        }
+        
+        this.renderPlayers();
+    }
+
+    /**
+     * Handle robber activation when 7 is rolled
+     */
+    handleRobber() {
+        // Step 1: Players with 8+ cards must discard half
+        this.players.forEach(player => {
+            const totalCards = Object.values(player.resources).reduce((sum, count) => sum + count, 0);
+            if (totalCards >= 8) {
+                const cardsToDiscard = Math.floor(totalCards / 2);
+                let discarded = 0;
+                
+                // Randomly discard cards for simulation
+                const resourceTypes = Object.keys(player.resources);
+                while (discarded < cardsToDiscard) {
+                    const randomResource = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
+                    if (player.resources[randomResource] > 0) {
+                        player.resources[randomResource]--;
+                        discarded++;
+                    }
+                }
+                
+                if (cardsToDiscard > 0) {
+                    this.addChatMessage(`${player.name} discarded ${cardsToDiscard} cards`, 'system');
+                }
+            }
+        });
+
+        // Step 2: Move robber (simulate by picking random non-desert hex)
+        const nonDesertHexes = this.board
+            .map((hex, index) => ({ hex, index }))
+            .filter(({ hex }) => hex.resource !== 'desert');
+        
+        if (nonDesertHexes.length > 0) {
+            const randomHex = nonDesertHexes[Math.floor(Math.random() * nonDesertHexes.length)];
+            this.addChatMessage(`Robber moved to ${randomHex.hex.resource} (${randomHex.hex.number})`, 'system');
+        }
+
+        // Step 3: Steal a card (simulate)
+        const currentPlayer = this.players[this.currentPlayer];
+        const otherPlayers = this.players.filter((_, index) => index !== this.currentPlayer);
+        
+        if (otherPlayers.length > 0 && currentPlayer) {
+            const targetPlayer = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+            const targetResources = Object.keys(targetPlayer.resources).filter(
+                resource => targetPlayer.resources[resource] > 0
+            );
+            
+            if (targetResources.length > 0) {
+                const stolenResource = targetResources[Math.floor(Math.random() * targetResources.length)];
+                targetPlayer.resources[stolenResource]--;
+                currentPlayer.resources[stolenResource]++;
+                this.addChatMessage(`${currentPlayer.name} stole a card from ${targetPlayer.name}`, 'system');
+            }
+        }
+
+        this.renderPlayers();
+    }
+
+    /**
+     * End current player's turn
+     */
+    endTurn() {
+        if (!this.players || this.players.length === 0) return;
+        
+        this.currentPlayer = (this.currentPlayer + 1) % this.players.length;
+        const nextPlayerName = this.players[this.currentPlayer]?.name || 'Unknown';
+        this.addChatMessage(`It's now ${nextPlayerName}'s turn`, 'system');
+        this.renderPlayers();
+        this.updateGameStatus();
+    }
+
+    /**
+     * Build a structure (road, settlement, or city)
+     * @param {string} type - Structure type
+     */
+    buildStructure(type) {
+        if (!this.players || this.players.length === 0) return;
+        
+        const costs = {
+            road: { wood: 1, brick: 1 },
+            settlement: { wood: 1, brick: 1, grain: 1, sheep: 1 },
+            city: { grain: 2, ore: 3 }
+        };
+
+        const cost = costs[type];
+        const player = this.players[this.currentPlayer];
+        
+        if (!player) return;
+        
+        // Check if player has enough resources
+        let canBuild = true;
+        const missingResources = [];
+        
+        for (const [resource, amount] of Object.entries(cost)) {
+            if (player.resources[resource] < amount) {
+                canBuild = false;
+                const needed = amount - player.resources[resource];
+                missingResources.push(`${needed} ${resource}`);
+            }
+        }
+
+        if (canBuild) {
+            // Deduct resources
+            for (const [resource, amount] of Object.entries(cost)) {
+                player.resources[resource] -= amount;
+            }
+            
+            // Add to player's buildings and score
+            if (!player.buildings) {
+                player.buildings = { roads: 0, settlements: 0, cities: 0 };
+            }
+            
+            player.buildings[type === 'road' ? 'roads' : type === 'settlement' ? 'settlements' : 'cities']++;
+            
+            // Add victory points
+            if (type === 'settlement') {
+                player.score += 1;
+            } else if (type === 'city') {
+                player.score += 2;
+                // Cities replace settlements, so we need to track this
+                player.buildings.settlements = Math.max(0, player.buildings.settlements - 1);
+            }
+            
+            // Check for victory
+            if (player.score >= 10) {
+                this.addChatMessage(`🎉 ${player.name} wins with ${player.score} victory points!`, 'system');
+                this.gamePhase = 'ended';
+            }
+            
+            this.addChatMessage(`${player.name} built a ${type}! (${player.score} VP)`, 'system');
+            this.renderPlayers();
+            this.updateGameStatus();
+        } else {
+            this.addChatMessage(`Cannot build ${type}! Missing: ${missingResources.join(', ')}`, 'system');
+        }
+    }
+
+    /**
+     * Open trade dialog (placeholder)
+     */
+    openTradeDialog() {
+        this.addChatMessage('Trading feature coming soon!', 'system');
+    }
+
+    /**
+     * Send a chat message
+     */
+    sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        if (message && this.players && this.players.length > 0) {
+            const playerName = this.players[0]?.name || 'Player';
+            this.addChatMessage(`${playerName}: ${message}`);
+            input.value = '';
+        }
+    }
+
+    /**
+     * Add a message to the chat
+     * @param {string} message - Message text
+     * @param {string} type - Message type ('player' or 'system')
+     */
+    addChatMessage(message, type = 'player') {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${type === 'system' ? 'system-message' : ''}`;
+        messageElement.textContent = message;
+        
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    /**
+     * Update the game status display
+     */
+    updateGameStatus() {
+        const status = document.getElementById('gameStatus');
+        if (this.players && this.players.length > 0 && this.players[this.currentPlayer]) {
+            status.textContent = `${this.players[this.currentPlayer].name}'s turn - ${this.gamePhase} phase`;
+        } else {
+            status.textContent = 'Loading game...';
+        }
+    }
+}
+
+// Initialize the game when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new CatanGame();
+});
