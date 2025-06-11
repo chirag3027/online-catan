@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Catan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            overflow-x: auto;
+        }
+
+        .game-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .game-status {
+            font-size: 1.2rem;
+            color: #ecf0f1;
+        }
+
+        .main-game {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .board-section {
+            flex: 2;
+            min-width: 600px;
+        }
+
+        .board {
+            background: #1a5490;
+            border-radius: 15px;
+            padding: 40px;
+            position: relative;
+            min-height: 600px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hex-grid {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .hex-row {
+            display: flex;
+            justify-content: center;
+            margin: -14px 0;
+            position: relative;
+        }
+
+        .hex-row:nth-child(1) { margin-left: 0; }
+        .hex-row:nth-child(2) { margin-left: 52px; }
+        .hex-row:nth-child(3) { margin-left: 0; }
+        .hex-row:nth-child(4) { margin-left: 52px; }
+        .hex-row:nth-child(5) { margin-left: 0; }
+
+        .hex {
+            width: 100px;
+            height: 86.6px;
+            position: relative;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .hex-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform: rotate(30deg);
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        .hex-inner-1 {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform: rotate(-60deg);
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        .hex-inner-2 {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform: rotate(-60deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .hex:hover {
+            transform: translateY(-5px);
+            z-index: 10;
+        }
+
+        .hex:hover .hex-inner-2 {
+            transform: rotate(-60deg) scale(1.05);
+        }
+
+        /* Resource-specific colors */
+        .hex.grain .hex-inner-2 { 
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        .hex.wood .hex-inner-2 { 
+            background: linear-gradient(135deg, #27ae60, #229954);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        .hex.brick .hex-inner-2 { 
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        .hex.ore .hex-inner-2 { 
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        .hex.sheep .hex-inner-2 { 
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        .hex.desert .hex-inner-2 { 
+            background: linear-gradient(135deg, #d35400, #ba4a00);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .hex-content {
+            transform: rotate(90deg);
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .resource-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.3));
+        }
+
+        .hex-number {
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            margin: -5px auto 0;
+            padding: 2px;
+            position: relative;
+        }
+
+        .hex-number.red-number {
+            background: #e74c3c !important;
+            color: white !important;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+
+        .hex-number .number {
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .hex-number .dots {
+            font-size: 8px;
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+        .sidebar {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .player-panel, .game-controls, .chat-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .players-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .player {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .player.active {
+            background: #3498db;
+            transform: scale(1.02);
+        }
+
+        .player-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .player-resources {
+            display: flex;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        .resource-count {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 5px;
+        }
+
+        .dice-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .dice {
+            display: inline-flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .die {
+            width: 50px;
+            height: 50px;
+            background: white;
+            color: black;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chat-messages {
+            height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .chat-input input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .message {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .system-message {
+            color: #f39c12;
+            font-style: italic;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background: #27ae60;
+        }
+
+        .disconnected {
+            background: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .main-game {
+                flex-direction: column;
+            }
+            
+            .board-section, .sidebar {
+                min-width: auto;
+            }
+            
+            .hex {
+                width: 80px;
+                height: 69.3px;
+            }
+            
+            .hex-row:nth-child(2) { margin-left: 42px; }
+            .hex-row:nth-child(4) { margin-left: 42px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connectionStatus">
+        Connecting...
+    </div>
+
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">🏝️ Online Catan</h1>
+            <p class="game-status" id="gameStatus">Waiting for players...</p>
+        </div>
+
+        <div class="main-game">
+            <div class="board-section">
+                <div class="board">
+                    <div class="hex-grid" id="hexGrid">
+                        <!-- Hexes will be generated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="player-panel">
+                    <h3>Players</h3>
+                    <div class="players-list" id="playersList">
+                        <!-- Players will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="game-controls">
+                    <div class="dice-section">
+                        <h4>Dice Roll</h4>
+                        <div class="dice">
+                            <div class="die" id="die1">?</div>
+                            <div class="die" id="die2">?</div>
+                        </div>
+                        <button class="btn btn-primary" id="rollDice">Roll Dice</button>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-success" id="buildRoad">Build Road</button>
+                        <button class="btn btn-success" id="buildSettlement">Build Settlement</button>
+                        <button class="btn btn-success" id="buildCity">Build City</button>
+                        <button class="btn btn-secondary" id="trade">Trade</button>
+                        <button class="btn btn-secondary" id="endTurn">End Turn</button>
+                    </div>
+                </div>
+
+                <div class="chat-panel">
+                    <h4>Chat</h4>
+                    <div class="chat-messages" id="chatMessages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="Type a message...">
+                        <button class="btn btn-primary" id="sendChat">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CatanGame {
+            constructor() {
+                this.players = [];
+                this.currentPlayer = 0;
+                this.gamePhase = 'setup';
+                this.board = this.generateBoard();
+                this.isConnected = false;
+                
+                this.addSamplePlayers();
+                this.initializeUI();
+                this.simulateConnection();
+            }
+
+            generateBoard() {
+                // Standard Catan resource distribution
+                const resourceTiles = [
+                    'brick', 'brick', 'brick',           // 3 brick
+                    'grain', 'grain', 'grain', 'grain',  // 4 grain
+                    'wood', 'wood', 'wood', 'wood',      // 4 wood
+                    'sheep', 'sheep', 'sheep', 'sheep',  // 4 sheep
+                    'ore', 'ore', 'ore',                 // 3 ore
+                    'desert'                             // 1 desert
+                ];
+                
+                // Standard Catan number distribution (excluding desert)
+                const numberTokens = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
+                
+                // Shuffle the resource tiles
+                for (let i = resourceTiles.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [resourceTiles[i], resourceTiles[j]] = [resourceTiles[j], resourceTiles[i]];
+                }
+                
+                // Create the board
+                const board = [];
+                let desertIndex = -1;
+                
+                // First pass: assign resources
+                for (let i = 0; i < 19; i++) {
+                    const resource = resourceTiles[i];
+                    if (resource === 'desert') {
+                        board.push({ resource: 'desert', number: null });
+                        desertIndex = i;
+                    } else {
+                        board.push({ resource, number: null }); // Numbers assigned later
+                    }
+                }
+                
+                // Define adjacency map for the hexagonal board (3-4-5-4-3 pattern)
+                const adjacencyMap = {
+                    0: [1, 3, 4],
+                    1: [0, 2, 4, 5],
+                    2: [1, 5, 6],
+                    3: [0, 4, 7, 8],
+                    4: [0, 1, 3, 5, 8, 9],
+                    5: [1, 2, 4, 6, 9, 10],
+                    6: [2, 5, 10, 11],
+                    7: [3, 8, 12],
+                    8: [3, 4, 7, 9, 12, 13],
+                    9: [4, 5, 8, 10, 13, 14],
+                    10: [5, 6, 9, 11, 14, 15],
+                    11: [6, 10, 15],
+                    12: [7, 8, 13, 16],
+                    13: [8, 9, 12, 14, 16, 17],
+                    14: [9, 10, 13, 15, 17, 18],
+                    15: [10, 11, 14, 18],
+                    16: [12, 13, 17],
+                    17: [13, 14, 16, 18],
+                    18: [14, 15, 17]
+                };
+                
+                // Assign numbers with constraint checking
+                const availablePositions = [];
+                for (let i = 0; i < 19; i++) {
+                    if (i !== desertIndex) {
+                        availablePositions.push(i);
+                    }
+                }
+                
+                // Try to place numbers with 6/8 constraint
+                let attempts = 0;
+                let success = false;
+                
+                while (!success && attempts < 1000) {
+                    attempts++;
+                    const tempBoard = [...board];
+                    const tempNumbers = [...numberTokens];
+                    
+                    // Shuffle available positions
+                    const shuffledPositions = [...availablePositions];
+                    for (let i = shuffledPositions.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffledPositions[i], shuffledPositions[j]] = [shuffledPositions[j], shuffledPositions[i]];
+                    }
+                    
+                    // Try to assign numbers
+                    success = true;
+                    for (let i = 0; i < shuffledPositions.length; i++) {
+                        const pos = shuffledPositions[i];
+                        const num = tempNumbers[i];
+                        
+                        // Check if placing this number violates 6/8 adjacency rule
+                        if (num === 6 || num === 8) {
+                            const adjacent = adjacencyMap[pos] || [];
+                            const hasAdjacentRedNumber = adjacent.some(adj => {
+                                const adjNum = tempBoard[adj].number;
+                                return (num === 6 && adjNum === 8) || (num === 8 && adjNum === 6);
+                            });
+                            
+                            if (hasAdjacentRedNumber) {
+                                success = false;
+                                break;
+                            }
+                        }
+                        
+                        tempBoard[pos].number = num;
+                    }
+                    
+                    if (success) {
+                        // Copy successful assignment back to board
+                        for (let i = 0; i < 19; i++) {
+                            if (i !== desertIndex) {
+                                board[i].number = tempBoard[i].number;
+                            }
+                        }
+                    }
+                }
+                
+                // If we couldn't find a valid configuration, just assign numbers randomly
+                // (this is very unlikely with standard Catan setup)
+                if (!success) {
+                    let numberIndex = 0;
+                    for (let i = 0; i < 19; i++) {
+                        if (i !== desertIndex) {
+                            board[i].number = numberTokens[numberIndex++];
+                        }
+                    }
+                }
+                
+                return board;
+            }
+
+            initializeUI() {
+                this.renderBoard();
+                this.setupEventListeners();
+                this.updateGameStatus();
+            }
+
+            getResourceIcon(resource) {
+                const icons = {
+                    grain: '🌾',
+                    wood: '🌲', 
+                    brick: '🧱',
+                    ore: '⛰️',
+                    sheep: '🐑',
+                    desert: '🏜️'
+                };
+                return icons[resource] || '❓';
+            }
+
+            getProbabilityDots(number) {
+                // Calculate probability dots based on dice combinations
+                const combinations = {
+                    2: 1,   // (1,1)
+                    3: 2,   // (1,2), (2,1)
+                    4: 3,   // (1,3), (2,2), (3,1)
+                    5: 4,   // (1,4), (2,3), (3,2), (4,1)
+                    6: 5,   // (1,5), (2,4), (3,3), (4,2), (5,1)
+                    7: 6,   // (1,6), (2,5), (3,4), (4,3), (5,2), (6,1)
+                    8: 5,   // (2,6), (3,5), (4,4), (5,3), (6,2)
+                    9: 4,   // (3,6), (4,5), (5,4), (6,3)
+                    10: 3,  // (4,6), (5,5), (6,4)
+                    11: 2,  // (5,6), (6,5)
+                    12: 1   // (6,6)
+                };
+                
+                const dotCount = combinations[number] || 0;
+                return '•'.repeat(dotCount);
+            }
+
+            renderBoard() {
+                const hexGrid = document.getElementById('hexGrid');
+                hexGrid.innerHTML = '';
+
+                // Create hexagonal board layout (3-4-5-4-3 pattern)
+                const rows = [
+                    { start: 0, count: 3 },   // Top row: 3 hexes
+                    { start: 3, count: 4 },   // Second row: 4 hexes  
+                    { start: 7, count: 5 },   // Middle row: 5 hexes
+                    { start: 12, count: 4 },  // Fourth row: 4 hexes
+                    { start: 16, count: 3 }   // Bottom row: 3 hexes
+                ];
+
+                rows.forEach((row, rowIndex) => {
+                    const rowElement = document.createElement('div');
+                    rowElement.className = 'hex-row';
+                    
+                    for (let i = 0; i < row.count; i++) {
+                        const hexIndex = row.start + i;
+                        if (hexIndex < this.board.length) {
+                            const hex = this.board[hexIndex];
+                            const hexElement = document.createElement('div');
+                            hexElement.className = `hex ${hex.resource}`;
+                            hexElement.dataset.index = hexIndex;
+                            
+                            const isRedNumber = (hex.number === 6 || hex.number === 8);
+                            const numberClass = isRedNumber ? 'hex-number red-number' : 'hex-number';
+                            
+                            hexElement.innerHTML = `
+                                <div class="hex-inner">
+                                    <div class="hex-inner-1">
+                                        <div class="hex-inner-2">
+                                            <div class="hex-content">
+                                                <div class="resource-icon">${this.getResourceIcon(hex.resource)}</div>
+                                                ${hex.number ? `
+                                                    <div class="${numberClass}">
+                                                        <div class="number">${hex.number}</div>
+                                                        <div class="dots">${this.getProbabilityDots(hex.number)}</div>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            rowElement.appendChild(hexElement);
+                        }
+                    }
+                    
+                    hexGrid.appendChild(rowElement);
+                });
+            }
+
+            setupEventListeners() {
+                document.getElementById('rollDice').addEventListener('click', () => this.rollDice());
+                document.getElementById('endTurn').addEventListener('click', () => this.endTurn());
+                document.getElementById('sendChat').addEventListener('click', () => this.sendChatMessage());
+                document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendChatMessage();
+                });
+
+                // Building buttons
+                document.getElementById('buildRoad').addEventListener('click', () => this.buildStructure('road'));
+                document.getElementById('buildSettlement').addEventListener('click', () => this.buildStructure('settlement'));
+                document.getElementById('buildCity').addEventListener('click', () => this.buildStructure('city'));
+                document.getElementById('trade').addEventListener('click', () => this.openTradeDialog());
+            }
+
+            simulateConnection() {
+                setTimeout(() => {
+                    this.isConnected = true;
+                    const status = document.getElementById('connectionStatus');
+                    status.textContent = 'Connected';
+                    status.className = 'connection-status connected';
+                    this.addChatMessage('Connected to game server!', 'system');
+                }, 2000);
+            }
+
+            addSamplePlayers() {
+                const samplePlayers = [
+                    { name: 'You', resources: { wood: 2, brick: 3, grain: 1, ore: 0, sheep: 2 }, score: 0 },
+                    { name: 'Alice', resources: { wood: 1, brick: 1, grain: 2, ore: 1, sheep: 1 }, score: 0 },
+                    { name: 'Bob', resources: { wood: 3, brick: 0, grain: 1, ore: 2, sheep: 1 }, score: 0 },
+                    { name: 'Carol', resources: { wood: 1, brick: 2, grain: 0, ore: 1, sheep: 3 }, score: 0 }
+                ];
+
+                this.players = samplePlayers;
+                this.renderPlayers();
+            }
+
+            renderPlayers() {
+                const playersList = document.getElementById('playersList');
+                playersList.innerHTML = '';
+
+                this.players.forEach((player, index) => {
+                    const playerElement = document.createElement('div');
+                    playerElement.className = `player ${index === this.currentPlayer ? 'active' : ''}`;
+                    
+                    const buildings = player.buildings || { roads: 0, settlements: 0, cities: 0 };
+                    
+                    playerElement.innerHTML = `
+                        <div>
+                            <div class="player-name">${player.name} ${player.score >= 10 ? '👑' : ''}</div>
+                            <div class="player-resources">
+                                <span class="resource-count">🌾${player.resources.grain}</span>
+                                <span class="resource-count">🌲${player.resources.wood}</span>
+                                <span class="resource-count">🧱${player.resources.brick}</span>
+                                <span class="resource-count">⛰️${player.resources.ore}</span>
+                                <span class="resource-count">🐑${player.resources.sheep}</span>
+                            </div>
+                            <div style="font-size: 0.8rem; margin-top: 5px;">
+                                🛣️${buildings.roads} 🏠${buildings.settlements} 🏛️${buildings.cities}
+                            </div>
+                        </div>
+                        <div style="font-weight: bold; font-size: 1.1rem;">
+                            ${player.score} VP
+                        </div>
+                    `;
+                    
+                    playersList.appendChild(playerElement);
+                });
+            }
+
+            rollDice() {
+                if (!this.players || this.players.length === 0) return;
+                
+                const die1 = Math.floor(Math.random() * 6) + 1;
+                const die2 = Math.floor(Math.random() * 6) + 1;
+                const total = die1 + die2;
+
+                document.getElementById('die1').textContent = die1;
+                document.getElementById('die2').textContent = die2;
+
+                const currentPlayerName = this.players[this.currentPlayer]?.name || 'Unknown';
+                this.addChatMessage(`${currentPlayerName} rolled ${die1} + ${die2} = ${total}`, 'system');
+                
+                if (total === 7) {
+                    this.handleRobber();
+                } else {
+                    this.distributeResources(total);
+                }
+
+                this.updateGameStatus();
+            }
+
+            distributeResources(number) {
+                if (!this.players || this.players.length === 0) return;
+                
+                // Find all hexes with the rolled number
+                const producingHexes = this.board
+                    .map((hex, index) => ({ hex, index }))
+                    .filter(({ hex }) => hex.number === number);
+                
+                if (producingHexes.length === 0) {
+                    this.addChatMessage(`No hexes produce resources for ${number}`, 'system');
+                    return;
+                }
+
+                // For simulation, give resources to players based on producing hexes
+                let totalDistributed = 0;
+                producingHexes.forEach(({ hex }) => {
+                    // Simulate each player having a chance to get resources from this hex
+                    this.players.forEach(player => {
+                        // 30% chance this player has a settlement on this hex (for simulation)
+                        if (Math.random() < 0.3) {
+                            const resourceMap = {
